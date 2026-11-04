@@ -20,15 +20,18 @@ LOGIN = "mykyta-olym"
 FONT_SIZE = 16
 CHAR_WIDTH = 8.8
 LINE_HEIGHT = 20
+ART_FONT_SIZE = 7.4
+ART_CHAR_WIDTH = 4.07
+ART_LINE_HEIGHT = 8.3
 PAD = 18
 INFO_WIDTH = 62
 GENERATED = ("assets/", "dist/", "docs/example.svg", "profile-dark.svg", "profile-light.svg")
 LOCKFILES = ("pnpm-lock.yaml", "package-lock.json", "yarn.lock", "uv.lock", "Cargo.lock", "go.sum")
 
 THEMES = {
-    "dark": {"bg": "#161b22", "text": "#c9d1d9", "key": "#ffa657", "value": "#a5d6ff",
+    "dark": {"bg": "#161b22", "text": "#c9d1d9", "art": "#f0f6fc", "key": "#ffa657", "value": "#a5d6ff",
              "dots": "#616e7f", "add": "#3fb950", "del": "#f85149"},
-    "light": {"bg": "#f6f8fa", "text": "#24292f", "key": "#953800", "value": "#0a3069",
+    "light": {"bg": "#f6f8fa", "text": "#24292f", "art": "#000000", "key": "#953800", "value": "#0a3069",
               "dots": "#9aa5b1", "add": "#1a7f37", "del": "#cf222e"},
 }
 
@@ -135,14 +138,13 @@ def info_lines(facts, stats):
 def render(theme_name, art, info):
     theme = THEMES[theme_name]
     art_cols = max(len(line) for line in art)
-    info_x = PAD + (art_cols + 3) * CHAR_WIDTH
-    rows = max(len(art), len(info))
+    info_x = PAD + art_cols * ART_CHAR_WIDTH + 26
     width = round(info_x + INFO_WIDTH * CHAR_WIDTH + PAD)
-    height = rows * LINE_HEIGHT + PAD * 2
-    art_top = PAD + (rows - len(art)) * LINE_HEIGHT / 2
+    height = round(max(len(info) * LINE_HEIGHT, len(art) * ART_LINE_HEIGHT) + PAD * 2)
+    art_top = (height - len(art) * ART_LINE_HEIGHT) / 2
 
     style = "".join(
-        f".{name}{{fill:{theme[name]}}}" for name in ("text", "key", "value", "dots", "add", "del")
+        f".{name}{{fill:{theme[name]}}}" for name in ("text", "art", "key", "value", "dots", "add", "del")
     )
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" role="img" '
@@ -153,11 +155,12 @@ def render(theme_name, art, info):
     ]
     for index, line in enumerate(art):
         if line:
-            y = art_top + (index + 0.8) * LINE_HEIGHT
-            length = len(line) * CHAR_WIDTH
+            y = art_top + (index + 0.8) * ART_LINE_HEIGHT
+            length = len(line) * ART_CHAR_WIDTH
             parts.append(
-                f'<text class="text" x="{PAD}" y="{y:g}" textLength="{length:g}" '
-                f'lengthAdjust="spacing" xml:space="preserve">{escape(line)}</text>'
+                f'<text class="art" font-size="{ART_FONT_SIZE}" x="{PAD}" y="{y:g}" '
+                f'textLength="{length:g}" lengthAdjust="spacing" '
+                f'xml:space="preserve">{escape(line)}</text>'
             )
     for index, runs in enumerate(info):
         chars = sum(len(text) for text, _ in runs)
@@ -175,11 +178,11 @@ def render(theme_name, art, info):
 
 def main():
     facts = json.loads((ROOT / "profile.json").read_text(encoding="utf-8"))
-    art = (ROOT / "art" / "portrait.txt").read_text(encoding="ascii").splitlines()
     account = fetch_account()
     stats = {**account, **measure_history(account["urls"], facts["commit_emails"])}
     info = info_lines(facts, stats)
     for name in THEMES:
+        art = (ROOT / "art" / f"portrait-{name}.txt").read_text(encoding="ascii").splitlines()
         with open(ROOT / f"profile-{name}.svg", "w", encoding="utf-8", newline="\n") as handle:
             handle.write(render(name, art, info))
     print({key: value for key, value in stats.items() if key != "urls"})

@@ -1,64 +1,69 @@
-"""Turns a portrait photo into ASCII art. Run locally; the photo is never committed.
+"""Turns a portrait photo into ASCII art, one version per theme. Run locally.
 
-    python scripts/make_portrait.py photo.png art/portrait.txt
+    python scripts/make_portrait.py photo.jpg art/
 
-Needs Pillow and NumPy. Works like a pencil sketch: dark features become dense
-glyphs and skin stays nearly empty, because raw brightness produces a uniform
-block of characters with no face in it. The mask values fit the source photo.
+Needs Pillow and NumPy. The photo is never committed.
+
+Three things decide whether a face survives the conversion:
+- Density: 120 x 66 characters. At 28 rows a face is an unreadable blob.
+- The red channel: skin is even and bright there, so the eyes, brows and mouth
+  stand out. In plain grayscale the lower half of a face turns dark.
+- A hand-traced outline removes the background, which would otherwise compete
+  with the face. The points fit this one photo.
 """
 
 import sys
+from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter, ImageOps
+from PIL import Image, ImageDraw, ImageFilter
 
-RAMP = " .,:;!|lj%kH@M"
-COLS, ROWS = 52, 28
+COLS, ROWS = 120, 66
+CROP = (105, 62, 550, 562)  # The head fills the frame, so the characters go to the face.
+RAMP = " .'`,:;~-+=ilt1jfxzvnuYXJCLQ0OZmwpdbkhao*#MW&8%B@"
+OUTLINE = [
+    (330, 80), (372, 84), (410, 100), (440, 125), (460, 155), (474, 190), (484, 225), (492, 262),
+    (497, 305), (498, 335), (490, 365), (476, 398), (462, 415), (452, 445), (438, 478), (434, 500),
+    (470, 508), (530, 548), (585, 595), (620, 640), (0, 640), (0, 596), (50, 566), (112, 548),
+    (172, 510), (190, 478), (186, 445), (178, 412), (164, 380), (154, 340), (153, 305), (160, 280),
+    (163, 240), (172, 200), (192, 160), (222, 125), (262, 98), (298, 84),
+]
 
 
 def subject_mask(size):
-    """Head, neck and shoulders, as fractions of the square photo."""
-    s = size * 4
-    mask = Image.new("L", (s, s), 0)
-    draw = ImageDraw.Draw(mask)
-    draw.ellipse((0.235 * s, 0.115 * s, 0.785 * s, 0.84 * s), fill=255)
-    draw.polygon(
-        [(0.29 * s, 0.70 * s), (0.70 * s, 0.70 * s), (0.72 * s, 0.82 * s), (0.97 * s, 1.0 * s),
-         (0.0 * s, 1.0 * s), (0.14 * s, 0.88 * s), (0.28 * s, 0.82 * s)],
-        fill=255,
+    scale = 4
+    mask = Image.new("L", (size * scale, size * scale), 0)
+    ImageDraw.Draw(mask).polygon([(x * scale, y * scale) for x, y in OUTLINE], fill=255)
+    mask = mask.resize((size, size), Image.LANCZOS).filter(ImageFilter.GaussianBlur(1.6))
+    return np.asarray(mask, dtype=float) / 255
+
+
+def tone(image, mask):
+    red = np.asarray(image, dtype=float)[..., 0] / 255
+    low, high = np.percentile(red[mask > 0.5], [2, 98.5])
+    stretched = np.clip((red - low) / (high - low), 0, 1)
+    sharpened = Image.fromarray((stretched * 255).astype("uint8")).filter(
+        ImageFilter.UnsharpMask(radius=5, percent=90, threshold=0)
     )
-    return mask.resize((size, size), Image.LANCZOS)
+    return np.asarray(sharpened, dtype=float) / 255
 
 
-def sketch(image, dark=1.6, detail=8.0, floor=0.2):
-    """Returns tone in 0..1, where 1 is the densest glyph."""
-    size = image.width
-    gray = ImageOps.autocontrast(ImageOps.grayscale(image), cutoff=1)
-    lum = np.asarray(gray, dtype=float) / 255
-    wide = np.asarray(gray.filter(ImageFilter.GaussianBlur(size * 0.05)), dtype=float) / 255
-    tight = np.asarray(gray.filter(ImageFilter.GaussianBlur(size * 0.006)), dtype=float) / 255
-    local = np.clip(wide - tight, 0, 1)
-    tone = dark * np.clip((0.42 - lum) / 0.42, 0, 1) ** 0.9 + detail * local
-    return np.clip(tone - floor * 0.25, 0, 1)
-
-
-def to_ascii(image, **options):
-    tone = sketch(image, **options)
-    alpha = np.asarray(subject_mask(image.width), dtype=float) / 255
-    tone_image = Image.fromarray((tone * alpha * 255).astype("uint8"))
-    small = np.asarray(tone_image.resize((COLS, ROWS), Image.BOX), dtype=float) / 255
-    # Keep a faint outline of the skin so the head has a silhouette.
-    edge = np.asarray(Image.fromarray((alpha * 255).astype("uint8")).resize((COLS, ROWS), Image.BOX), dtype=float) / 255
-    small = np.where((edge > 0.5) & (small < 0.08), 0.09, small)
+def to_lines(values):
+    frame = Image.fromarray((values * 255).astype("uint8")).crop(CROP)
+    small = np.asarray(frame.resize((COLS, ROWS), Image.BOX), dtype=float) / 255
     indices = np.clip((small * (len(RAMP) - 1)).round().astype(int), 0, len(RAMP) - 1)
     return ["".join(RAMP[i] for i in row).rstrip() for row in indices]
 
 
 def main():
-    source, target = sys.argv[1], sys.argv[2]
-    lines = to_ascii(Image.open(source).convert("RGB"))
-    with open(target, "w", encoding="ascii", newline="\n") as handle:
-        handle.write("\n".join(lines) + "\n")
+    source, target = sys.argv[1], Path(sys.argv[2])
+    image = Image.open(source).convert("RGB")
+    mask = subject_mask(image.width)
+    bright = tone(image, mask)
+    versions = {"dark": bright * mask, "light": (1 - bright) * mask}
+    for name, values in versions.items():
+        with open(target / f"portrait-{name}.txt", "w", encoding="ascii", newline="\n") as handle:
+            handle.write("\n".join(to_lines(values)) + "\n")
 
 
 if __name__ == "__main__":
