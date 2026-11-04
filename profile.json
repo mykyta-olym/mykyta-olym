@@ -1,36 +1,93 @@
 {
   "header": "mykyta@olym",
-  "commit_emails": ["mykyta.olym.work@gmail.com"],
+  "commit_emails": [
+    "mykyta.olym.work@gmail.com"
+  ],
   "sections": [
     {
       "rows": [
-        ["OS", "Windows 11"],
-        ["Role", "Front-End Developer"],
-        ["Study", "Informatics, 5th year, TUKE"],
-        ["Degree", "Bachelor's finished"],
-        ["Location", "Košice, Slovakia"],
-        ["Home", "Kyiv, Ukraine"],
-        ["IDE", "VS Code"]
+        [
+          "OS",
+          "Windows 11"
+        ],
+        [
+          "Role",
+          "Front-End Developer"
+        ],
+        [
+          "Study",
+          "Informatics, 5th year, TUKE"
+        ],
+        [
+          "Degree",
+          "Bachelor's finished"
+        ],
+        [
+          "Location",
+          "Košice, Slovakia"
+        ],
+        [
+          "Home",
+          "Kyiv, Ukraine"
+        ],
+        [
+          "IDE",
+          "VS Code"
+        ]
       ]
     },
     {
       "title": "Stack",
       "rows": [
-        ["Languages.Code", "JavaScript, TypeScript, Python"],
-        ["Languages.Web", "HTML, CSS, JSON"],
-        ["Frameworks", "React, Angular, Vue, Svelte, Node.js"],
-        ["Languages.Real", "Ukrainian, English, Slovak"],
-        ["Interests", "Automation, AI/ML, Security, Dev Tools"],
-        ["Current", "Personal project, built with Claude Code"]
+        [
+          "Languages.Code",
+          "JavaScript, TypeScript, Python"
+        ],
+        [
+          "Languages.Web",
+          "HTML, CSS, JSON"
+        ],
+        [
+          "Frameworks",
+          "React, Angular, Vue, Svelte, Node.js"
+        ],
+        [
+          "Languages.Real",
+          "Ukrainian, English, Slovak"
+        ],
+        [
+          "Interests",
+          "Automation, AI/ML, Security, Dev Tools"
+        ],
+        [
+          "Current",
+          "Personal project, built with Claude Code"
+        ]
       ]
     },
     {
       "title": "Contact",
       "rows": [
-        ["Email.Work", "mykyta.olym.work@gmail.com"],
-        ["Telegram", "@PhD_Mykyta"],
-        ["Instagram", "_vette_"],
-        ["Discord", "1_eyed_ghoul"]
+        [
+          "Email.Work",
+          "mykyta.olym.work@gmail.com"
+        ],
+        [
+          "LinkedIn",
+          "mykyta-olym"
+        ],
+        [
+          "Telegram",
+          "@PhD_Mykyta"
+        ],
+        [
+          "Instagram",
+          "_vette_"
+        ],
+        [
+          "Discord",
+          "1_eyed_ghoul"
+        ]
       ]
     }
   ]
